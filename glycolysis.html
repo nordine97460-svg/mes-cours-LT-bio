@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Glycolysis — Biochemical Pathway</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #080808;
+    --surface:    #111111;
+    --border:     #222222;
+    --substrate:  oklch(0.60 0.14 245);   /* blue */
+    --substrate-dim: oklch(0.28 0.08 245);
+    --product:    oklch(0.60 0.14 145);   /* green */
+    --product-dim: oklch(0.24 0.08 145);
+    --cofactor:   oklch(0.72 0.17 65);    /* orange */
+    --cofactor-dim: oklch(0.28 0.10 65);
+    --regulatory: oklch(0.72 0.18 20);    /* red */
+    --regulatory-dim: oklch(0.25 0.08 20);
+    --enzyme-text: #c8c8c8;
+    --dim-text:   #555;
+    --muted:      #333;
+  }
+
+  html { background: var(--bg); }
+
+  body {
+    background: var(--bg);
+    color: #e0e0e0;
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 0 0 80px;
+  }
+
+  /* ── Header ── */
+  .header {
+    padding: 40px 60px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+  }
+  .header-title {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: #fff;
+  }
+  .header-sub {
+    font-size: 13px;
+    color: var(--dim-text);
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: #888;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+  }
+
+  /* ── Energy balance bar ── */
+  .energy-bar {
+    margin: 28px 60px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .energy-label {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+  }
+  .energy-items {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+    flex: 1;
+  }
+  .energy-chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .chip-invest { background: var(--regulatory-dim); color: var(--regulatory); border: 1px solid var(--regulatory); }
+  .chip-gain   { background: var(--product-dim);    color: var(--product);    border: 1px solid var(--product); }
+  .chip-nadh   { background: var(--cofactor-dim);   color: var(--cofactor);   border: 1px solid var(--cofactor); }
+  .chip-net    { background: #1a1a1a; color: #fff; border: 1px solid #444; }
+  .energy-eq   { color: #444; font-size: 14px; }
+
+  /* ── Pathway container ── */
+  .pathway-wrap {
+    margin: 36px 60px 0;
+    display: flex;
+    gap: 0;
+  }
+
+  /* Left step numbers column */
+  .step-col {
+    display: flex;
+    flex-direction: column;
+    width: 40px;
+    flex-shrink: 0;
+    padding-top: 38px;
+  }
+
+  /* Main pathway column */
+  .pathway {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  /* Molecule box */
+  .molecule {
+    position: relative;
+    z-index: 2;
+    border: 1.5px solid;
+    border-radius: 8px;
+    padding: 12px 22px;
+    min-width: 280px;
+    max-width: 360px;
+    width: 100%;
+    background: var(--bg);
+  }
+  .molecule.substrate { border-color: var(--substrate); background: var(--substrate-dim); }
+  .molecule.product   { border-color: var(--product);   background: var(--product-dim); }
+  .molecule.highlight { box-shadow: 0 0 20px -4px currentColor; }
+
+  .mol-name {
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1.2;
+    letter-spacing: -0.2px;
+  }
+  .substrate .mol-name { color: var(--substrate); }
+  .product   .mol-name { color: var(--product); }
+
+  .mol-formula {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    margin-top: 3px;
+    color: #666;
+    letter-spacing: 0.04em;
+  }
+  .mol-abbr {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 0.06em;
+  }
+
+  /* Split row for aldolase step */
+  .split-row {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    width: 100%;
+    max-width: 560px;
+    position: relative;
+    z-index: 2;
+  }
+  .split-row .molecule {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+
+  /* Arrow + enzyme row */
+  .step-row {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    max-width: 600px;
+    position: relative;
+    min-height: 72px;
+  }
+  .step-row.wide { max-width: 600px; }
+
+  /* Vertical arrow line */
+  .arrow-track {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 40px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .arrow-line {
+    flex: 1;
+    width: 2px;
+    background: var(--muted);
+    position: relative;
+    min-height: 32px;
+  }
+  .arrow-head {
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 10px solid var(--muted);
+    flex-shrink: 0;
+    margin-top: -1px;
+  }
+  .arrow-track.regulatory .arrow-line { background: var(--regulatory); }
+  .arrow-track.regulatory .arrow-head { border-top-color: var(--regulatory); }
+
+  /* Enzyme info panel — sits beside the arrow */
+  .enzyme-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 8px 0 8px 20px;
+    gap: 6px;
+  }
+  .enzyme-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--enzyme-text);
+    line-height: 1.2;
+  }
+  .enzyme-name.reg {
+    color: var(--regulatory);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .reg-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--regulatory);
+    border: 1px solid var(--regulatory);
+    border-radius: 3px;
+    padding: 1px 5px;
+    text-transform: uppercase;
+  }
+
+  /* Cofactor tags */
+  .cofactors {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .cf {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .cf-in  { background: var(--cofactor-dim); color: var(--cofactor); border: 1px solid color-mix(in oklch, var(--cofactor) 40%, transparent); }
+  .cf-out { background: #1a1a1a; color: #888; border: 1px solid #333; }
+  .cf-water { background: #111; color: #555; border: 1px solid #2a2a2a; }
+
+  .cf-arrow { color: #333; font-size: 11px; align-self: center; }
+
+  /* Step number badge */
+  .step-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: #333;
+    width: 40px;
+    text-align: right;
+    padding-right: 12px;
+    padding-top: 12px;
+    flex-shrink: 0;
+  }
+
+  /* Right annotation side */
+  .note-col {
+    width: 180px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding-left: 24px;
+    padding-top: 36px;
+    gap: 0;
+  }
+  .note-item {
+    min-height: 72px;
+    display: flex;
+    align-items: center;
+    border-left: 2px solid transparent;
+    padding-left: 12px;
+    font-size: 11px;
+    color: #444;
+    font-family: 'IBM Plex Mono', monospace;
+    line-height: 1.5;
+  }
+  .note-item.active {
+    border-left-color: var(--cofactor);
+    color: #666;
+  }
+  .note-mol-item {
+    height: 50px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* × 2 badge for second half */
+  .times2-banner {
+    margin: 12px 0 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--product);
+    background: var(--product-dim);
+    border: 1px dashed var(--product);
+    border-radius: 4px;
+    padding: 5px 14px;
+    text-align: center;
+    width: 100%;
+    max-width: 360px;
+    letter-spacing: 0.04em;
+  }
+
+  /* Section divider */
+  .phase-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #333;
+    align-self: flex-start;
+    padding: 18px 0 6px;
+  }
+
+  /* Subscript helper */
+  sub { font-size: 0.75em; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="header-title">Glycolysis</div>
+    <div class="header-sub">C<sub>6</sub>H<sub>12</sub>O<sub>6</sub> → 2 C<sub>3</sub>H<sub>4</sub>O<sub>3</sub> &nbsp;|&nbsp; 10 enzymatic steps &nbsp;|&nbsp; cytoplasm</div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--substrate)"></div>Substrates / Intermediates</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--product)"></div>Products</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cofactor)"></div>Cofactors</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--regulatory)"></div>Regulatory enzyme</div>
+  </div>
+</div>
+
+<!-- Energy balance -->
+<div class="energy-bar">
+  <div class="energy-label">Energy balance</div>
+  <div class="energy-items">
+    <span class="energy-chip chip-invest">−2 ATP invested</span>
+    <span class="energy-eq">+</span>
+    <span class="energy-chip chip-gain">+4 ATP generated</span>
+    <span class="energy-eq">=</span>
+    <span class="energy-chip chip-net">Net +2 ATP</span>
+    <span class="energy-eq">&nbsp;·&nbsp;</span>
+    <span class="energy-chip chip-nadh">+2 NADH</span>
+    <span class="energy-eq">&nbsp;·&nbsp;</span>
+    <span class="energy-chip chip-gain">+2 Pyruvate</span>
+  </div>
+</div>
+
+<!-- Pathway -->
+<div class="pathway-wrap">
+
+  <!-- Step numbers -->
+  <div class="step-col" id="step-col"></div>
+
+  <!-- Main pathway -->
+  <div class="pathway" id="pathway">
+
+    <div class="phase-label">Phase I — Energy Investment (×1)</div>
+
+    <!-- Glucose -->
+    <div class="molecule substrate highlight">
+      <div class="mol-name">Glucose</div>
+      <div class="mol-formula">C<sub>6</sub>H<sub>12</sub>O<sub>6</sub></div>
+      <div class="mol-abbr">GLC</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="step-row">
+      <div class="arrow-track regulatory">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name reg">Hexokinase <span class="reg-badge">Regulatory</span></div>
+        <div class="cofactors">
+          <span class="cf cf-in">ATP</span>
+          <span class="cf-arrow">→</span>
+          <span class="cf cf-out">ADP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- G6P -->
+    <div class="molecule substrate">
+      <div class="mol-name">Glucose-6-phosphate</div>
+      <div class="mol-formula">C<sub>6</sub>H<sub>13</sub>O<sub>9</sub>P</div>
+      <div class="mol-abbr">G6P</div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="step-row">
+      <div class="arrow-track">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name">Phosphoglucose isomerase</div>
+        <div class="cofactors">
+          <span class="cf cf-water">isomerization</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- F6P -->
+    <div class="molecule substrate">
+      <div class="mol-name">Fructose-6-phosphate</div>
+      <div class="mol-formula">C<sub>6</sub>H<sub>13</sub>O<sub>9</sub>P</div>
+      <div class="mol-abbr">F6P</div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="step-row">
+      <div class="arrow-track regulatory">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name reg">Phosphofructokinase-1 <span class="reg-badge">Regulatory</span></div>
+        <div class="cofactors">
+          <span class="cf cf-in">ATP</span>
+          <span class="cf-arrow">→</span>
+          <span class="cf cf-out">ADP</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- F1,6BP -->
+    <div class="molecule substrate">
+      <div class="mol-name">Fructose-1,6-bisphosphate</div>
+      <div class="mol-formula">C<sub>6</sub>H<sub>14</sub>O<sub>12</sub>P<sub>2</sub></div>
+      <div class="mol-abbr">F1,6BP</div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step-row wide">
+      <div class="arrow-track">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name">Aldolase</div>
+        <div class="cofactors">
+          <span class="cf cf-water">aldol cleavage → 2 trioses</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Split: DHAP + G3P -->
+    <div class="split-row">
+      <div class="molecule substrate" style="opacity:0.6;">
+        <div class="mol-name">DHAP</div>
+        <div class="mol-formula">C<sub>3</sub>H<sub>7</sub>O<sub>6</sub>P</div>
+      </div>
+      <div class="molecule substrate">
+        <div class="mol-name">Glyceraldehyde-3-phosphate</div>
+        <div class="mol-formula">C<sub>3</sub>H<sub>7</sub>O<sub>6</sub>P</div>
+        <div class="mol-abbr">G3P</div>
+      </div>
+    </div>
+
+    <!-- Step 5 (isomerase, DHAP → G3P) -->
+    <div class="step-row wide">
+      <div class="arrow-track" style="opacity:0.4;">
+        <div class="arrow-line" style="background:#333;"></div>
+        <div class="arrow-head" style="border-top-color:#333;"></div>
+      </div>
+      <div class="enzyme-panel" style="opacity:0.65;">
+        <div class="enzyme-name">Triose phosphate isomerase</div>
+        <div class="cofactors">
+          <span class="cf cf-water">DHAP → G3P (×1 more)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="times2-banner">↓ From here, all steps × 2 (per glucose molecule) ↓</div>
+
+    <div class="phase-label">Phase II — Energy Recovery (×2)</div>
+
+    <!-- G3P again (label) -->
+    <div class="molecule substrate">
+      <div class="mol-name">Glyceraldehyde-3-phosphate</div>
+      <div class="mol-formula">C<sub>3</sub>H<sub>7</sub>O<sub>6</sub>P</div>
+      <div class="mol-abbr">G3P</div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="step-row">
+      <div class="arrow-track">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name">Glyceraldehyde-3-P dehydrogenase</div>
+        <div class="cofactors">
+          <span class="cf cf-in">NAD⁺ + Pᵢ</span>
+          <span class="cf-arrow">→</span>
+          <span class="cf cf-out">NADH + H⁺</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1,3-BPG -->
+    <div class="molecule substrate">
+      <div class="mol-name">1,3-Bisphosphoglycerate</div>
+      <div class="mol-formula">C<sub>3</sub>H<sub>8</sub>O<sub>10</sub>P<sub>2</sub></div>
+      <div class="mol-abbr">1,3-BPG</div>
+    </div>
+
+    <!-- Step 7 -->
+    <div class="step-row">
+      <div class="arrow-track">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name">Phosphoglycerate kinase</div>
+        <div class="cofactors">
+          <span class="cf cf-in">ADP</span>
+          <span class="cf-arrow">→</span>
+          <span class="cf cf-out">ATP</span>
+          <span class="cf cf-water">substrate-level</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3-PG -->
+    <div class="molecule substrate">
+      <div class="mol-name">3-Phosphoglycerate</div>
+      <div class="mol-formula">C<sub>3</sub>H<sub>7</sub>O<sub>7</sub>P</div>
+      <div class="mol-abbr">3-PG</div>
+    </div>
+
+    <!-- Step 8 -->
+    <div class="step-row">
+      <div class="arrow-track">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name">Phosphoglycerate mutase</div>
+        <div class="cofactors">
+          <span class="cf cf-water">phosphate shift 3→2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2-PG -->
+    <div class="molecule substrate">
+      <div class="mol-name">2-Phosphoglycerate</div>
+      <div class="mol-formula">C<sub>3</sub>H<sub>7</sub>O<sub>7</sub>P</div>
+      <div class="mol-abbr">2-PG</div>
+    </div>
+
+    <!-- Step 9 -->
+    <div class="step-row">
+      <div class="arrow-track">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name">Enolase</div>
+        <div class="cofactors">
+          <span class="cf cf-water">−H₂O</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PEP -->
+    <div class="molecule substrate">
+      <div class="mol-name">Phosphoenolpyruvate</div>
+      <div class="mol-formula">C<sub>3</sub>H<sub>5</sub>O<sub>6</sub>P</div>
+      <div class="mol-abbr">PEP</div>
+    </div>
+
+    <!-- Step 10 -->
+    <div class="step-row">
+      <div class="arrow-track regulatory">
+        <div class="arrow-line"></div>
+        <div class="arrow-head"></div>
+      </div>
+      <div class="enzyme-panel">
+        <div class="enzyme-name reg">Pyruvate kinase <span class="reg-badge">Regulatory</span></div>
+        <div class="cofactors">
+          <span class="cf cf-in">ADP</span>
+          <span class="cf-arrow">→</span>
+          <span class="cf cf-out">ATP</span>
+          <span class="cf cf-water">substrate-level</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pyruvate -->
+    <div class="molecule product highlight">
+      <div class="mol-name">Pyruvate</div>
+      <div class="mol-formula">C<sub>3</sub>H<sub>4</sub>O<sub>3</sub></div>
+      <div class="mol-abbr">PYR</div>
+    </div>
+
+  </div><!-- /pathway -->
+
+  <!-- Right: step numbers column -->
+  <div class="note-col" id="note-col">
+    <!-- populated by JS -->
+  </div>
+
+</div><!-- /pathway-wrap -->
+
+<script>
+  // Inject step numbers beside each step-row
+  const stepRows = document.querySelectorAll('.step-row');
+  // Step numbering: rows correspond to steps 1,2,3,4,5,6,7,8,9,10
+  const stepMeta = [
+    { n: 1,  dG: '−16.7 kJ/mol', invest: true },
+    { n: 2,  dG: '+1.7 kJ/mol',  invest: false },
+    { n: 3,  dG: '−14.2 kJ/mol', invest: true },
+    { n: 4,  dG: '+23.9 kJ/mol', invest: false },
+    { n: 5,  dG: '+7.7 kJ/mol',  invest: false },
+    { n: 6,  dG: '−6.3 kJ/mol',  invest: false },
+    { n: 7,  dG: '−18.9 kJ/mol', invest: false },
+    { n: 8,  dG: '+4.4 kJ/mol',  invest: false },
+    { n: 9,  dG: '−3.2 kJ/mol',  invest: false },
+    { n: 10, dG: '−31.7 kJ/mol', invest: false },
+  ];
+
+  // Add step-number badges directly into each step-row's arrow-track
+  stepRows.forEach((row, i) => {
+    if (i >= stepMeta.length) return;
+    const meta = stepMeta[i];
+    const badge = document.createElement('div');
+    badge.style.cssText = `
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: ${meta.invest ? 'var(--regulatory)' : '#444'};
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg);
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid ${meta.invest ? 'var(--regulatory)' : '#222'};
+      white-space: nowrap;
+      z-index: 10;
+    `;
+    badge.textContent = meta.n;
+    const track = row.querySelector('.arrow-track');
+    if (track) {
+      track.style.position = 'relative';
+      track.appendChild(badge);
+    }
+  });
+
+  // Populate note-col with ΔG° values
+  const noteCol = document.getElementById('note-col');
+  const pathway = document.getElementById('pathway');
+
+  // Build note items aligned to step-rows (approximation)
+  const noteHTML = stepMeta.map(m => `
+    <div class="note-item ${m.dG.startsWith('-') ? 'active' : ''}">
+      <div>
+        <div style="font-size:9px;color:#333;margin-bottom:2px;">STEP ${m.n} &nbsp; ΔG°′</div>
+        <div style="font-size:11px;color:${m.dG.startsWith('-') ? 'var(--product)' : '#555'};">${m.dG}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Insert a header and spacer
+  noteCol.innerHTML = `
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#2a2a2a;margin-bottom:8px;">ΔG°′ standard</div>
+    ${noteHTML}
+  `;
+</script>
+
+</body>
+</html>
